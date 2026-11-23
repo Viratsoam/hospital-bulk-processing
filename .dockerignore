@@ -1,0 +1,15 @@
+# Keep the build context small and never ship dev artifacts into the image.
+.git
+.venv
+__pycache__/
+*.pyc
+.pytest_cache
+.coverage
+htmlcov
+.env
+.env.*
+tests
+README.md
+render.yaml
+.dockerignore
+Dockerfile

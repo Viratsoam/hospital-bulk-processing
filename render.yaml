@@ -1,0 +1,38 @@
+# Render Blueprint for the Hospital Bulk Processing API.
+#
+# This describes a Docker-based web service. Render builds the image from the
+# repository's Dockerfile, starts it, and uses the /health endpoint for its
+# readiness check. No credentials are baked in here; every secret or
+# environment-specific value is supplied through Render's env vars (see the
+# notes below and the README).
+#
+# Apply with:  render up      (from this repository root)
+services:
+  - type: web
+    name: hospital-bulk-processing
+    plan: free
+    runtime: docker
+    # Build straight from the Dockerfile in the repo root.
+    healthCheckPath: /health
+    autoDeploy: false
+
+    envVars:
+      # Mark the deployment as production; the app logs and behaves
+      # accordingly (Settings.is_production).
+      - key: HBP_ENVIRONMENT
+        value: production
+
+      # Point the client at the Hospital Directory API. The default in the
+      # image already targets the deployed API, so this variable is optional
+      # and only needed if the upstream host differs.
+      - key: HBP_HOSPITAL_API_BASE_URL
+        value: https://hospital-directory.onrender.com
+
+      # Optional overrides; each has a working default, so all of these can
+      # be omitted:
+      #   HBP_HOSPITAL_API_TIMEOUT_SECONDS
+      #   HBP_HOSPITAL_API_MAX_CONCURRENCY
+      #   HBP_HOSPITAL_API_MAX_RETRIES
+      #   HBP_MAX_HOSPITALS_PER_BATCH
+      #   HBP_MAX_CSV_SIZE_BYTES
+      #   HBP_LOG_LEVEL

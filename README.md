@@ -65,11 +65,87 @@ uvicorn app.main:app --reload
 Swagger UI: <http://127.0.0.1:8000/docs>
 OpenAPI JSON: <http://127.0.0.1:8000/openapi.json>
 
-## Test
+## Docker
+
+Build and run the production image locally:
 
 ```bash
-pytest -v
+docker build -t hospital-bulk-processing .
+
+# Default port 8000
+docker run --rm -p 8000:8000 hospital-bulk-processing
+
+# Custom port (e.g. the one Render assigns)
+docker run --rm -p 10000:10000 -e PORT=10000 hospital-bulk-processing
 ```
+
+The image binds to `0.0.0.0` on the port given by the `PORT` environment
+variable (default `8000`). It needs **no** `.env` file: every setting has a
+built-in default and is overridden through environment variables only.
+
+Once running, verify:
+
+```bash
+curl http://127.0.0.1:10000/health
+# {"status":"ok","service":"Hospital Bulk Processing",...}
+
+# Swagger UI: http://127.0.0.1:10000/docs
+# OpenAPI JSON: http://127.0.0.1:10000/openapi.json
+```
+
+## Deploy to Render
+
+The repository ships a Render Blueprint ([render.yaml](render.yaml)) that
+describes a Docker-based web service with a `/health` readiness check.
+
+**Step-by-step (Blueprint):**
+
+1. Push the repository to GitHub.
+2. In the Render dashboard, choose *Blueprint → Deploy* and select this
+   repository (or run `render up` locally).
+3. Render builds the image from `Dockerfile`, starts the service, and probes
+   `GET /health` to decide readiness. No further configuration is required:
+   the service binds to the `PORT` Render assigns and the Hospital Directory
+   API base URL defaults to the deployed upstream.
+
+**Manual alternative:** create a *Web Service* with
+- *Runtime:* Docker, *DockerfilePath:* `Dockerfile`,
+- *Health Check Path:* `/health`,
+- environment variables: `HBP_ENVIRONMENT=production` (optional),
+  plus any of the `HBP_` overrides below.
+
+**Deployed URLs** (for your service `https://<service>.onrender.com`):
+
+| URL | Purpose |
+|-----|---------|
+| `/health` | Readiness probe: `{"status": "ok", ...}` |
+| `/docs` | Swagger UI |
+| `/openapi.json` | OpenAPI 3.1 document |
+| `/hospitals/validate` | CSV dry-run validation |
+| `/hospitals/bulk` | Create and activate a hospital batch |
+
+**Environment variables.** All are optional — the defaults target the
+deployed staging API — and the app never reads a `.env` file in production:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `HBP_HOSPITAL_API_BASE_URL` | `https://hospital-directory.onrender.com` | Upstream Hospital Directory API host. |
+| `HBP_HOSPITAL_API_TIMEOUT_SECONDS` | `75` | Read timeout (covers Render cold starts). |
+| `HBP_HOSPITAL_API_CONNECT_TIMEOUT_SECONDS` | `5` | Connect timeout. |
+| `HBP_HOSPITAL_API_MAX_CONCURRENCY` | `20` | Max concurrent upstream create calls. |
+| `HBP_HOSPITAL_API_MAX_RETRIES` | `1` | Retries after the initial attempt. |
+| `HBP_MAX_HOSPITALS_PER_BATCH` | `20` | Max CSV records accepted per batch. |
+| `HBP_MAX_CSV_SIZE_BYTES` | `1000000` | Max upload size. |
+| `HBP_ENVIRONMENT` | `local` | `production` in Render. |
+| `HBP_LOG_LEVEL` | `INFO` | Log verbosity. |
+| `PORT` | `8000` | Supplied by Render; the container binds to it. |
+
+> **Batch state is in-memory.** The batch repository
+> (`InMemoryBatchRepository`) keeps batch records for the lifetime of the
+> process and **loses them when the service restarts or is redeployed**
+> (including Render's sleep-free but stateless reboots). No upstream data is
+> lost — created hospitals persist in the Hospital Directory API — but the
+> local audit trail of batch outcomes does not.
 
 ## Usage
 
