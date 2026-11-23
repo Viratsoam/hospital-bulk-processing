@@ -11,7 +11,8 @@ The module exposes two things:
 * ``app`` — the module-level instance ASGI servers import.
 """
 
-from typing import Optional
+from contextlib import asynccontextmanager
+from typing import AsyncIterator, Optional
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -19,6 +20,7 @@ from fastapi.responses import JSONResponse
 
 from app.api.routes import csv as csv_routes
 from app.api.routes import health as health_routes
+from app.clients.hospital_api_client import HospitalAPIClient
 from app.core.config import Settings, get_settings
 from app.core.logging import configure_logging, get_logger
 
@@ -61,6 +63,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         openapi_url="/openapi.json",
         contact={"name": "Hospital Bulk Processing"},
         license_info={"name": "MIT"},
+        lifespan=_application_lifespan,
     )
 
     application.state.settings = resolved
@@ -85,6 +88,35 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         resolved.environment,
     )
     return application
+
+
+@asynccontextmanager
+async def _application_lifespan(application: FastAPI) -> AsyncIterator[None]:
+    """Manage the lifecycle of long-lived resources.
+
+    A single shared :class:`HospitalAPIClient` (and its ``httpx.AsyncClient``
+    connection pool) is created when the application starts and closed when
+    it stops. The client is reachable from request scope as
+    ``request.app.state.hospital_api``; the future processing layer will
+    depend on it.
+
+    Args:
+        application: The application instance for which to manage resources.
+
+    Yields:
+        Control for the duration of the application's lifetime.
+    """
+    settings: Settings = application.state.settings
+    application.state.hospital_api = HospitalAPIClient(settings)
+    logger.info("Hospital API client started base_url=%s",
+                settings.hospital_api_base_url)
+    try:
+        yield
+    finally:
+        client = application.state.hospital_api
+        await client.aclose()
+        del application.state.hospital_api
+        logger.info("Hospital API client closed")
 
 
 def _install_exception_handlers(application: FastAPI) -> None:

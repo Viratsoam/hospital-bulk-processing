@@ -8,13 +8,16 @@ upstream API integration come later.
 
 ```
 app/
-  main.py                 Application factory (uvicorn app.main:app)
+  main.py                 Application factory (uvicorn app.main:app), lifespan
+                          manages the shared HospitalAPIClient
   api/
     dependencies.py       FastAPI dependency providers (DI seam for tests)
     routes/
       health.py           GET /health liveness probe
       csv.py              POST /hospitals/validate
-  clients/                Reserved for the Hospital Directory API client
+  clients/
+    hospital_api_client.py  Async client for the Hospital Directory API
+                          (create hospital, fetch batch, activate batch)
   core/
     config.py             Settings (env vars, HBP_ prefix, .env support)
     logging.py            Process logging setup
@@ -29,6 +32,8 @@ tests/
   conftest.py             Shared fixtures and CSV builder helper
   test_validation_service.py  Unit tests, one per validation rule
   test_api.py             HTTP-level tests through TestClient
+  test_hospital_api_client.py  Client tests: respx-mocked HTTP, injected
+                          transports for connection/timeout failures
 ```
 
 ## Installation

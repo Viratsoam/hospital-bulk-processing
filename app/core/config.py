@@ -37,12 +37,15 @@ class Settings(BaseSettings):
     # Defaults reflect the deployed staging API verified during integration
     # analysis. Overridable so tests and local runs never touch production data.
     hospital_api_base_url: str = "https://hospital-directory.onrender.com"
-    hospital_api_timeout_seconds: float = Field(default=30.0, gt=0)
+    # The API runs on Render, whose cold starts can take 30-60s; the read
+    # timeout defaults to 75s so the first request after a sleep succeeds.
+    hospital_api_timeout_seconds: float = Field(default=75.0, gt=0)
     hospital_api_connect_timeout_seconds: float = Field(default=5.0, gt=0)
     # Upstream create calls cost ~5.3s each but do not degrade under load, so
     # fan-out width is bounded only to stay a polite client.
     hospital_api_max_concurrency: int = Field(default=20, ge=1, le=100)
-    hospital_api_max_retries: int = Field(default=2, ge=0, le=5)
+    #: Number of retries after the initial attempt; total attempts = 1 + this.
+    hospital_api_max_retries: int = Field(default=1, ge=0, le=5)
 
     # --- CSV ingestion limits -------------------------------------------------
     max_hospitals_per_batch: int = Field(default=20, ge=1, le=1000)
