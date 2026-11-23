@@ -45,7 +45,7 @@ HOSPITAL_1 = {
     "address": "1 Hill St",
     "phone": "555-0101",
     "creation_batch_id": str(BATCH_ID),
-    "is_active": False,
+    "active": False,
 }
 HOSPITAL_2 = {
     "id": 2,
@@ -53,7 +53,7 @@ HOSPITAL_2 = {
     "address": "2 Lake Rd",
     "phone": None,
     "creation_batch_id": str(BATCH_ID),
-    "is_active": False,
+    "active": False,
 }
 
 

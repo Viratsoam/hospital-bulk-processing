@@ -23,17 +23,25 @@ app/
     logging.py            Process logging setup
   repositories/
     base.py               In-memory storage abstraction
+    batch_repository.py   Batch record storage seam (in-memory reference
+                          implementation; deep-copy retrieval)
   schemas/
     csv.py                Pydantic models and error codes
+    batch.py              Batch lifecycle models (RowStatus, BatchStatus,
+                          BatchRecord, RowResult)
   services/
     csv_parser.py         Pure CSV mechanics (decode, parse, normalize)
     validation_service.py Business rules (headers, rows, limits)
+    bulk_processing_service.py  Bulk engine: concurrent creation, ambiguous-
+                          outcome reconciliation, activation safety
 tests/
   conftest.py             Shared fixtures and CSV builder helper
   test_validation_service.py  Unit tests, one per validation rule
   test_api.py             HTTP-level tests through TestClient
   test_hospital_api_client.py  Client tests: respx-mocked HTTP, injected
                           transports for connection/timeout failures
+  test_bulk_processing_service.py  Engine tests against a programmable
+                          fake client and recording repository
 ```
 
 ## Installation
